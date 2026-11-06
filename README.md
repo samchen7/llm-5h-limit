@@ -22,7 +22,12 @@ Set the start and end time, how long it takes you to burn one 5-hour quota, and 
 - **Orange / yellow**: the first and second quota of each round
 - **Shaded bands**: sleep (00:00–06:00), lunch (12:00–13:00), dinner (18:00–19:00), which heavy use avoids
 
-Below the timeline is the prompt to schedule at each trigger time.
+Below the timeline:
+
+- **Schedule**: each round's trigger time, local cron expression, both 5-hour windows and their reset times
+- **Trigger prompt**: the tiny prompt each cron job sends
+
+**Copy rules for LLM** (top right) copies the rules plus the current schedule as Markdown. Paste it into Claude or Codex and ask it to create the cron jobs.
 
 ## Run locally
 

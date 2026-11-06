@@ -3,186 +3,381 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LLM 5h Limit Timeline</title>
-<meta name="description" content="Plan cron triggers and heavy-use windows to burn Claude and Codex $20 plan quotas efficiently in a 48-hour hackathon.">
+<title>5h Quota Planner</title>
+<meta name="description" content="A timeline that plans cron triggers and heavy-use windows to spend every 5-hour Claude and Codex quota in a 48-hour hackathon.">
 <style>
   :root {
-    --bg: #0f1115;
-    --card: #181b22;
-    --line: #2a2f3a;
-    --fg: #e8eaef;
-    --dim: #8b93a7;
-    --cron: #5fd3a6;
-    --b1: #ff8a5c;
-    --b2: #ffc857;
-    --sleep: #242a38;
-    --meal: #3a3224;
+    --bg: #f5f4ef;
+    --surface: #ffffff;
+    --surface-2: #faf9f6;
+    --ink: #1c1d21;
+    --muted: #6c6f77;
+    --faint: #9a9da4;
+    --line: #e5e3dc;
+    --line-strong: #d3d0c6;
+    --trigger: #0e8a6a;
+    --q1: #dd5f32;
+    --q2: #d99a1c;
+    --q1-tint: rgba(221, 95, 50, 0.10);
+    --q2-tint: rgba(217, 154, 28, 0.12);
+    --off: rgba(28, 29, 33, 0.045);
+    --off-hatch: rgba(28, 29, 33, 0.07);
+    --now: #2f6fde;
+    --warn: #a35f00;
+    color-scheme: light;
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1013;
+      --surface: #15181d;
+      --surface-2: #1a1e24;
+      --ink: #e8e9ec;
+      --muted: #8d929c;
+      --faint: #61666f;
+      --line: #252930;
+      --line-strong: #323741;
+      --trigger: #4fd1a5;
+      --q1: #ff875a;
+      --q2: #ffc451;
+      --q1-tint: rgba(255, 135, 90, 0.12);
+      --q2-tint: rgba(255, 196, 81, 0.11);
+      --off: rgba(255, 255, 255, 0.035);
+      --off-hatch: rgba(255, 255, 255, 0.05);
+      --now: #6fa0ff;
+      --warn: #f0b860;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1013;
+    --surface: #15181d;
+    --surface-2: #1a1e24;
+    --ink: #e8e9ec;
+    --muted: #8d929c;
+    --faint: #61666f;
+    --line: #252930;
+    --line-strong: #323741;
+    --trigger: #4fd1a5;
+    --q1: #ff875a;
+    --q2: #ffc451;
+    --q1-tint: rgba(255, 135, 90, 0.12);
+    --q2-tint: rgba(255, 196, 81, 0.11);
+    --off: rgba(255, 255, 255, 0.035);
+    --off-hatch: rgba(255, 255, 255, 0.05);
+    --now: #6fa0ff;
+    --warn: #f0b860;
+    color-scheme: dark;
+  }
+
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
     background: var(--bg);
-    color: var(--fg);
-    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-variant-numeric: tabular-nums;
   }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; }
   main {
     max-width: 1120px;
     margin: 0 auto;
-    padding: 28px max(20px, env(safe-area-inset-right)) 48px max(20px, env(safe-area-inset-left));
+    padding: 24px max(24px, env(safe-area-inset-right)) 48px max(24px, env(safe-area-inset-left));
   }
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  label { display: block; color: var(--dim); font-size: 12px; margin-bottom: 6px; min-height: 32px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  h1 span { color: var(--muted); font-weight: 450; }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 8px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 7px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 550;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  button:hover { opacity: 0.88; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--now); outline-offset: 1px; }
+  button svg { width: 15px; height: 15px; flex: 0 0 auto; }
+  button.ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 3px; }
+  button.ghost:hover { color: var(--ink); background: var(--surface-2); opacity: 1; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card + .card { margin-top: 16px; }
+
+  /* Controls */
+  .controls {
+    display: grid;
+    grid-template-columns: 1.3fr 1.3fr 1fr 1fr;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  label { display: block; color: var(--muted); font-size: 12px; font-weight: 500; margin-bottom: 5px; }
   .pair { display: flex; gap: 6px; }
   .pair input { flex: 1 1 auto; min-width: 0; }
   .pair select { flex: 0 0 84px; }
   input, select {
     width: 100%;
-    padding: 8px 10px;
+    height: 36px;
+    padding: 0 10px;
     border-radius: 8px;
-    border: 1px solid var(--line);
-    background: var(--card);
-    color: var(--fg);
+    border: 1px solid var(--line-strong);
+    background: var(--surface-2);
+    color: var(--ink);
     font: inherit;
-    color-scheme: dark;
   }
-  .wrap { margin-top: 22px; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  .unit { position: relative; }
+  .unit input { padding-right: 38px; }
+  .unit span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--faint); font-size: 12px; pointer-events: none; }
+
+  /* Summary line */
+  .summary {
+    display: flex;
+    align-items: center;
+    gap: 6px 18px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .summary b { color: var(--ink); font-weight: 650; }
+  .summary .warn { color: var(--warn); }
+  .legend { margin-left: auto; display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  .legend i.dot { border-radius: 50%; background: var(--trigger); }
+  .legend i.q1 { background: var(--q1); }
+  .legend i.q2 { background: var(--q2); }
+  .legend i.off { background: repeating-linear-gradient(135deg, var(--off-hatch) 0 2px, transparent 2px 4px), var(--off); border: 1px solid var(--line); }
+
+  /* Timeline */
+  .tl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; border-top: 1px solid var(--line); }
   .tl { position: relative; }
-  .date {
-    position: absolute;
-    font-size: 12px;
-    color: var(--dim);
-    white-space: nowrap;
-  }
-  .tml {
-    position: absolute;
-    transform: translateX(-50%);
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .track { position: absolute; left: 0; right: 0; }
-  .band { position: absolute; z-index: 1; }
-  .date, .tml { z-index: 3; }
-  .link, .burn, .dot, .tick { z-index: 2; }
-  .band.sleep { background: var(--sleep); }
-  .band.meal { background: var(--meal); }
-  .band span {
-    position: absolute;
-    left: 2px; right: 2px;
-    top: 3px;
-    text-align: center;
-    font-size: 10px;
-    color: #9aa3b5;
-  }
-  .link { position: absolute; height: 2px; background: var(--cron); }
-  .burn { position: absolute; border-radius: 5px; }
-  .burn.b1 { background: var(--b1); }
-  .burn.b2 { background: var(--b2); }
-  .dot {
-    position: absolute;
-    width: 12px; height: 12px;
-    margin: -6px 0 0 -6px;
-    border-radius: 50%;
-    background: var(--cron);
-    box-shadow: 0 0 0 3px var(--bg);
+  .tl > div { position: absolute; }
+  .row-line { left: 0; right: 0; height: 1px; background: var(--line); }
+  .off { background: var(--off); }
+  .off.sleep { background: repeating-linear-gradient(135deg, var(--off-hatch) 0 2px, transparent 2px 6px), var(--off); }
+  .midnight { width: 1px; background: var(--line-strong); z-index: 1; }
+  .day { font-size: 12px; font-weight: 600; white-space: nowrap; z-index: 2; }
+  .hour { font-size: 11px; color: var(--faint); transform: translateX(-50%); white-space: nowrap; z-index: 2; }
+  .lane { font-size: 11px; color: var(--faint); z-index: 2; left: 8px; }
+  .win {
     z-index: 2;
-  }
-  .tick { position: absolute; width: 1px; background: #3a4150; }
-  .tick.major { background: #4a5160; }
-  .dur {
-    position: absolute;
-    text-align: center;
-    font-size: 12px;
+    border-radius: 6px;
+    border: 1.5px solid;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 6px;
+    font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
+    overflow: hidden;
   }
-  .dur span { position: relative; }
-  .prompts { margin-top: 22px; }
-  .prompt { display: flex; gap: 16px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); }
-  .when { flex: 0 0 148px; color: var(--cron); font-weight: 600; }
-  .prompt p { margin: 0; user-select: all; }
-  @media (max-width: 800px) {
-    .grid { grid-template-columns: 1fr 1fr; }
-    .prompt { flex-direction: column; gap: 4px; align-items: stretch; }
-    .when { flex-basis: auto; }
+  .win.w1 { border-color: var(--q1); background: var(--q1-tint); color: var(--q1); }
+  .win.w2 { border-color: var(--q2); background: var(--q2-tint); color: var(--q2); }
+  .burn { z-index: 2; border-radius: 5px; }
+  .burn.b1 { background: var(--q1); }
+  .burn.b2 { background: var(--q2); }
+  .use-at { z-index: 2; font-size: 11px; color: var(--muted); white-space: nowrap; transform: translateX(-100%); padding-right: 5px; }
+  .trig { z-index: 3; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: var(--trigger); box-shadow: 0 0 0 3px var(--surface); }
+  .trig-label { z-index: 3; font-size: 11px; font-weight: 650; color: var(--trigger); white-space: nowrap; }
+  .now { z-index: 4; width: 2px; margin-left: -1px; background: var(--now); }
+
+  .tip {
+    position: fixed;
+    z-index: 50;
+    pointer-events: none;
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 6px 9px;
+    border-radius: 6px;
+    white-space: pre-line;
+    display: none;
+  }
+  .tip.on { display: block; }
+
+  /* Schedule */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  th:first-child, td:first-child { padding-left: 16px; color: var(--faint); }
+  th:last-child, td:last-child { padding-right: 16px; }
+  .sub { color: var(--muted); }
+  .t-trig { color: var(--trigger); font-weight: 650; }
+  .t-q1 { color: var(--q1); }
+  .t-q2 { color: var(--q2); }
+  .cron { display: inline-flex; align-items: center; gap: 2px; }
+  .cron code { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+  .empty { padding: 24px 16px; color: var(--muted); text-align: center; }
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .foot code { color: var(--ink); }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 13px;
+    font-weight: 550;
+    padding: 8px 14px;
+    border-radius: 8px;
+    display: none;
+    z-index: 60;
+  }
+  .toast.on { display: block; }
+
+  @media (max-width: 860px) {
+    .controls { grid-template-columns: 1fr 1fr; }
+    .legend { margin-left: 0; }
   }
   @media (max-width: 640px) {
     main { padding: 16px max(16px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
-    .grid { grid-template-columns: 1fr; gap: 14px; }
-    label { min-height: 0; }
-    input, select { font-size: 16px; min-height: 44px; }
-    .pair select { flex-basis: 104px; }
-    .prompt { padding: 12px 0; }
-    .prompt p { line-height: 1.45; }
-    .wrap { margin-top: 18px; }
+    h1 span { display: none; }
+    .controls { grid-template-columns: 1fr; gap: 12px; }
+    input, select { height: 44px; font-size: 16px; }
+    .pair select { flex-basis: 100px; }
+    th.hide-sm, td.hide-sm { display: none; }
+    td, th { padding-left: 8px; padding-right: 8px; }
   }
 </style>
 </head>
 <body>
 <main>
-  <div class="grid">
-    <div>
-      <label for="start">Start</label>
-      <div class="pair"><input id="start" type="date"><select id="startTime" aria-label="Start time"></select></div>
+  <header>
+    <h1>5h Quota Planner <span>· spend every 5-hour window</span></h1>
+    <button id="copyRules" type="button" title="Copy the rules and schedule as a prompt for an LLM">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>
+      <span id="copyRulesText">Copy rules for LLM</span>
+    </button>
+  </header>
+
+  <section class="card">
+    <div class="controls">
+      <div>
+        <label for="start">Start</label>
+        <div class="pair"><input id="start" type="date"><select id="startTime" aria-label="Start time"></select></div>
+      </div>
+      <div>
+        <label for="end">End</label>
+        <div class="pair"><input id="end" type="date"><select id="endTime" aria-label="End time"></select></div>
+      </div>
+      <div>
+        <label for="burn">Hours to burn one quota</label>
+        <div class="unit"><input id="burn" type="number" value="1.5" min="0.25" max="4" step="0.25" inputmode="decimal"><span>h</span></div>
+      </div>
+      <div>
+        <label for="cap">Weekly cap</label>
+        <div class="unit"><input id="cap" type="number" value="7.692" min="0.25" step="0.001" inputmode="decimal"><span>× 5h</span></div>
+      </div>
     </div>
-    <div>
-      <label for="end">End</label>
-      <div class="pair"><input id="end" type="date"><select id="endTime" aria-label="End time"></select></div>
+    <div class="summary">
+      <span id="summary"></span>
+      <div class="legend">
+        <span><i class="dot"></i>Trigger</span>
+        <span><i class="q1"></i>Quota 1</span>
+        <span><i class="q2"></i>Quota 2</span>
+        <span><i class="off"></i>Off-hours</span>
+      </div>
     </div>
-    <div>
-      <label for="burn">Hours to burn one 5h quota</label>
-      <input id="burn" type="number" value="1.5" min="0.25" max="4" step="0.25">
+    <div class="tl-scroll" id="wrap"><div class="tl" id="tl"></div></div>
+  </section>
+
+  <section class="card">
+    <div id="schedule"></div>
+    <div class="foot">
+      Trigger prompt: <code class="mono" id="promptText"></code>
+      <button class="ghost" type="button" id="copyPrompt" aria-label="Copy trigger prompt" title="Copy"></button>
     </div>
-    <div>
-      <label for="cap">Weekly quota (× 5h)</label>
-      <input id="cap" type="number" value="7.692" min="0.25" step="0.001">
-    </div>
-  </div>
-  <div class="wrap" id="wrap"><div class="tl" id="tl"></div></div>
-  <div class="prompts" id="prompts"></div>
+  </section>
 </main>
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 const HOUR = 3600e3;
 const STEP = 15 * 60e3;
+const WINDOW = 5 * HOUR;
+const PROMPT = 'Use the cheapest model. Reply "hi" and nothing else.';
+const OFF_HOURS = [
+  { name: "Sleep", kind: "sleep", from: 0, to: 360 },
+  { name: "Lunch", kind: "meal", from: 720, to: 780 },
+  { name: "Dinner", kind: "meal", from: 1080, to: 1140 }
+];
+const STORE_KEY = "llm-5h-planner";
+const COPY_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>`;
 const $ = id => document.getElementById(id);
 const ctx = document.createElement("canvas").getContext("2d");
 
-function measure(text, font) {
+function measure(text, font = '600 11px system-ui, -apple-system, sans-serif') {
   ctx.font = font;
   return ctx.measureText(text).width;
 }
-function hhmm(t) {
-  const d = new Date(t);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-function dayLabel(t) {
-  return new Date(t).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-}
-function stamp(t) {
-  const d = new Date(t);
-  const date = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-  return `${date}, ${hhmm(t)}`;
-}
-function hoursText(ms) {
-  const h = Math.round(ms / HOUR * 100) / 100;
-  return `${h}h`;
-}
-function blocked(t) {
+const pad = n => String(n).padStart(2, "0");
+const hhmm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const dayLabel = t => new Date(t).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+const shortDay = t => new Date(t).toLocaleDateString("en-US", { weekday: "short" });
+const stamp = t => `${dayLabel(t)}, ${hhmm(t)}`;
+const hoursText = ms => `${Math.round(ms / HOUR * 100) / 100}h`;
+const minText = m => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
+
+function offAt(t) {
   const d = new Date(t);
   const m = d.getHours() * 60 + d.getMinutes();
-  return m < 360 || (m >= 720 && m < 780) || (m >= 1080 && m < 1140);
+  return OFF_HOURS.find(o => m >= o.from && m < o.to) || null;
 }
 function free(a, b) {
-  for (let t = a; t < b; t += STEP) if (blocked(t)) return false;
+  for (let t = a; t < b; t += STEP) if (offAt(t)) return false;
   return true;
 }
-function kind(t) {
-  const h = new Date(t).getHours();
-  if (h < 6) return "sleep";
-  if (h >= 12 && h < 13) return "lunch";
-  return "dinner";
+function cronExpr(t) {
+  const d = new Date(t);
+  return `${d.getMinutes()} ${d.getHours()} ${d.getDate()} ${d.getMonth() + 1} *`;
 }
+function isoLocal(t) {
+  const d = new Date(t);
+  const off = -d.getTimezoneOffset();
+  const a = Math.abs(off);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${hhmm(t)}${off >= 0 ? "+" : "-"}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
+}
+
+/* Each round: trigger opens window 1, quota 1 is burned right before the reset,
+   quota 2 is burned in window 2. The next trigger waits until window 2 expires. */
 function plan(S, E, burnH, cap) {
   const b = burnH * HOUR;
   const rounds = [];
@@ -199,261 +394,299 @@ function plan(S, E, burnH, cap) {
     const total = dur1 + dur2;
     let earliest = cursor;
     if (prevReset > -Infinity) {
-      earliest = Math.max(earliest, w2 > 0 ? prevReset + 10 * HOUR - dur1 : prevReset + 5 * HOUR);
+      earliest = Math.max(earliest, w2 > 0 ? prevReset + 2 * WINDOW - dur1 : prevReset + WINDOW);
     }
-    let t = Math.ceil((earliest - 1e-6) / STEP) * STEP;
     let found = null;
-    for (; t + total <= E + 1; t += STEP) {
+    for (let t = Math.ceil((earliest - 1e-6) / STEP) * STEP; t + total <= E + 1; t += STEP) {
       if (free(t, t + total)) { found = t; break; }
     }
     if (found == null) break;
     const reset = found + dur1;
+    const cron = w2 > 0 ? reset - WINDOW : found;
     rounds.push({
-      cron: w2 > 0 ? reset - 5 * HOUR : found,
+      cron,
       start: found,
-      reset,
+      reset: w2 > 0 ? reset : cron + WINDOW,
+      w2End: w2 > 0 ? reset + WINDOW : null,
       end: found + total,
-      dur1,
-      dur2,
-      w: w1 + w2
+      dur1, dur2, w1, w2
     });
     used += w1 + w2;
     prevReset = reset;
     cursor = found + total;
   }
-  return rounds;
+  return { rounds, used };
 }
 
-function pack(items, allowNew) {
-  const lanes = [];
-  const sorted = items.slice().sort((a, b) => a.x - b.x);
-  for (const it of sorted) {
-    const left = it.x - it.w / 2;
-    const right = it.x + it.w / 2;
-    let lane = 0;
-    for (; lane < lanes.length; lane++) {
-      if (lanes[lane].every(o => right < o.l - 6 || left > o.r + 6)) break;
-    }
-    if (lane === lanes.length && !allowNew) { it.lane = -1; continue; }
-    if (!lanes[lane]) lanes[lane] = [];
-    lanes[lane].push({ l: left, r: right });
-    it.lane = lane;
-  }
-  return lanes.length;
+function readState() {
+  return {
+    S: new Date(`${$("start").value}T${$("startTime").value}`).getTime(),
+    E: new Date(`${$("end").value}T${$("endTime").value}`).getTime(),
+    burnH: Math.min(4, Math.max(0.25, +$("burn").value || 1.5)),
+    cap: Math.max(0.25, +$("cap").value || 7.692)
+  };
 }
+
+let current = null;
 
 function render() {
-  const S = new Date(`${$("start").value}T${$("startTime").value}`).getTime();
-  const E = new Date(`${$("end").value}T${$("endTime").value}`).getTime();
-  const burnH = Math.min(4, Math.max(0.25, +$("burn").value || 1.5));
-  const cap = Math.max(0.25, +$("cap").value || 7.692);
+  const st = readState();
+  saveState();
+  const valid = st.E > st.S;
+  const { rounds, used } = valid ? plan(st.S, st.E, st.burnH, st.cap) : { rounds: [], used: 0 };
+  current = { st, rounds, used };
+  renderSummary(current, valid);
+  renderTimeline(current, valid);
+  renderSchedule(current, valid);
+}
+
+function renderSummary({ st, rounds, used }, valid) {
+  const el = $("summary");
+  if (!valid) { el.innerHTML = `<span class="warn">End must be after start.</span>`; return; }
+  const left = st.cap - used;
+  const last = rounds[rounds.length - 1];
+  const parts = [
+    `<b>${rounds.length}</b> rounds`,
+    `<b>${+used.toFixed(2)}</b> / ${+st.cap.toFixed(3)} weekly quota`,
+    last ? `done <b>${shortDay(last.end)} ${hhmm(last.end)}</b>` : ""
+  ].filter(Boolean);
+  el.innerHTML = parts.join(" · ") + (left > 1e-3 ? ` · <span class="warn">${+left.toFixed(2)} doesn't fit</span>` : "");
+}
+
+function renderTimeline({ st, rounds }, valid) {
   const tl = $("tl");
-  const prompts = $("prompts");
-  if (!(E > S)) { tl.innerHTML = ""; prompts.innerHTML = ""; return; }
+  if (!valid) { tl.innerHTML = ""; tl.style.height = "0"; return; }
+  const AXIS = 40, WIN = 38, USE = 38;
+  const winY = AXIS, useY = AXIS + WIN, totalH = AXIS + WIN + USE;
 
-  const rounds = plan(S, E, burnH, cap);
-  let t0 = S;
-  let t1 = E;
-  if (rounds.length) t0 = Math.min(t0, rounds[0].cron);
-  t0 -= 1.5 * HOUR;
-  t1 += HOUR;
-  const span = t1 - t0;
+  let t0 = st.S, t1 = st.E;
+  rounds.forEach(r => { t0 = Math.min(t0, r.cron); t1 = Math.max(t1, r.w2End || r.reset); });
+  t0 = Math.floor((t0 - HOUR) / HOUR) * HOUR;
+  t1 = Math.ceil((t1 + HOUR) / HOUR) * HOUR;
+  const spanH = (t1 - t0) / HOUR;
   const wrapW = $("wrap").clientWidth || 800;
-  const width = wrapW < 720 ? Math.max(wrapW, Math.ceil(span / HOUR * 22)) : Math.max(wrapW, 640);
-  const xOf = t => (t - t0) / span * width;
-
-  const font = '600 12px system-ui, -apple-system, "Segoe UI", sans-serif';
-  const events = [];
-  rounds.forEach(r => {
-    events.push({ t: r.cron, text: hhmm(r.cron), color: "var(--cron)" });
-    events.push({ t: r.start, text: hhmm(r.start), color: "var(--b1)" });
-    if (r.dur2 > 0) events.push({ t: r.reset, text: hhmm(r.reset), color: "var(--fg)" });
-    events.push({ t: r.end, text: hhmm(r.end), color: r.dur2 > 0 ? "var(--b2)" : "var(--b1)" });
-  });
-  events.forEach(e => { e.x = xOf(e.t); e.w = measure(e.text, font); });
-  const timeLanes = pack(events, true);
-
-  const grid = [];
-  const origin = new Date(t0);
-  origin.setMinutes(0, 0, 0);
-  const oh = origin.getHours();
-  origin.setHours(oh + (6 - oh % 6) % 6);
-  if (origin.getTime() < t0) origin.setHours(origin.getHours() + 6);
-  for (let t = origin.getTime(); t <= t1; t += 6 * HOUR) {
-    const x = xOf(t);
-    if (events.some(e => Math.abs(e.x - x) < 30)) continue;
-    const text = hhmm(t);
-    grid.push({ t, text, x, w: measure(text, font), color: "var(--dim)" });
-  }
-  const gridLanes = [];
-  events.forEach(e => {
-    if (!gridLanes[e.lane]) gridLanes[e.lane] = [];
-    gridLanes[e.lane].push({ l: e.x - e.w / 2, r: e.x + e.w / 2 });
-  });
-  grid.forEach(g => {
-    const left = g.x - g.w / 2, right = g.x + g.w / 2;
-    let lane = 0;
-    for (; lane < timeLanes; lane++) {
-      const occ = gridLanes[lane] || [];
-      if (occ.every(o => right < o.l - 6 || left > o.r + 6)) {
-        occ.push({ l: left, r: right });
-        gridLanes[lane] = occ;
-        g.lane = lane;
-        break;
-      }
-    }
-    if (g.lane == null) g.lane = -1;
-  });
-
-  const durs = [];
-  const pushDur = (a, b, text, color) => {
-    durs.push({ a, b, text, color, x: (xOf(a) + xOf(b)) / 2, w: measure(text, font) + 8 });
-  };
-  rounds.forEach(r => {
-    if (r.start - r.cron > 60e3) pushDur(r.cron, r.start, hoursText(r.start - r.cron), "var(--cron)");
-    const t1 = hoursText(r.dur1);
-    const t2 = r.dur2 > 0 ? hoursText(r.dur2) : "";
-    const s1 = xOf(r.reset) - xOf(r.start);
-    const s2 = r.dur2 > 0 ? xOf(r.end) - xOf(r.reset) : 0;
-    const w1 = measure(t1, font) + 10;
-    const w2 = t2 ? measure(t2, font) + 10 : 0;
-    if (!t2 || (s1 >= w1 && s2 >= w2)) {
-      pushDur(r.start, r.reset, t1, "var(--b1)");
-      if (t2) pushDur(r.reset, r.end, t2, "var(--b2)");
-    } else {
-      const both = `${t1} + ${t2}`;
-      const spanW = xOf(r.end) - xOf(r.start);
-      pushDur(r.start, r.end, spanW >= measure(both, font) + 10 ? both : hoursText(r.dur1 + r.dur2), "var(--fg)");
-    }
-  });
-  durs.forEach(d => {
-    d.x = (xOf(d.a) + xOf(d.b)) / 2;
-    d.w = measure(d.text, font) + 8;
-  });
-  const durLanes = durs.length ? pack(durs, true) : 1;
-
-  const dateH = 22;
-  const laneH = 18;
-  const timeH = Math.max(1, timeLanes) * laneH + 8;
-  const trackH = 44;
-  const durH = Math.max(1, durLanes) * laneH + 10;
-  const trackTop = dateH + timeH;
+  const width = Math.max(wrapW, Math.ceil(spanH * (wrapW < 640 ? 20 : 15)));
+  const pxH = width / spanH;
+  const xOf = t => (t - t0) / (t1 - t0) * width;
   tl.style.width = width + "px";
-  tl.style.height = (trackTop + trackH + durH + (wrapW < 720 ? 18 : 0)) + "px";
-
+  tl.style.height = totalH + "px";
   const html = [];
-  const day0 = new Date(t0);
-  day0.setHours(0, 0, 0, 0);
-  for (let t = day0.getTime(); t < t1; t = new Date(new Date(t).setDate(new Date(t).getDate() + 1)).getTime()) {
-    const a = Math.max(t, t0);
-    if (a >= t1) continue;
-    const text = dayLabel(t);
-    const lw = measure(text, font);
-    let left = xOf(a);
-    if (left + lw > width - 2) left = Math.max(0, width - lw - 2);
-    html.push(`<div class="date" style="left:${left}px;top:2px">${text}</div>`);
-  }
 
-  const first = new Date(t0);
-  first.setMinutes(0, 0, 0);
-  if (first.getTime() < t0) first.setHours(first.getHours() + 1);
-  for (let t = first.getTime(); t <= t1; t += HOUR) {
-    const major = new Date(t).getHours() % 6 === 0;
-    html.push(`<div class="tick${major ? " major" : ""}" style="left:${xOf(t)}px;top:${trackTop}px;height:${major ? 10 : 5}px"></div>`);
-  }
+  html.push(`<div class="row-line" style="top:${winY}px"></div><div class="row-line" style="top:${useY}px"></div>`);
 
-  let band = null;
-  const flush = end => {
-    if (!band) return;
-    const left = xOf(band.s);
-    const w = xOf(end) - left;
-    const name = band.k === "sleep" ? "Sleep" : band.k === "lunch" ? "Lunch" : "Dinner";
-    const tw = measure(name, "10px system-ui");
-    let label = "";
-    if (tw + 8 < w) {
-      const dots = rounds.map(r => r.cron).filter(t => t > band.s && t < end);
-      if (!dots.length) label = `<span>${name}</span>`;
-      else {
-        const dx = xOf(dots[0]) - left;
-        const leftRoom = dx - 14;
-        const rightRoom = w - dx - 14;
-        if (Math.max(leftRoom, rightRoom) > tw) {
-          const onLeft = leftRoom >= rightRoom;
-          const x = onLeft ? Math.max(2, (leftRoom - tw) / 2) : dx + 14 + Math.max(0, (rightRoom - tw) / 2);
-          label = `<span style="left:${x}px;right:auto;width:${tw + 2}px">${name}</span>`;
-        }
-      }
+  const dStart = new Date(t0); dStart.setHours(0, 0, 0, 0);
+  for (let d = new Date(dStart); d.getTime() < t1; d.setDate(d.getDate() + 1)) {
+    OFF_HOURS.forEach(o => {
+      const a = new Date(d); a.setHours(0, o.from, 0, 0);
+      const b = new Date(d); b.setHours(0, o.to, 0, 0);
+      const A = Math.max(a.getTime(), t0), B = Math.min(b.getTime(), t1);
+      if (B <= A) return;
+      html.push(`<div class="off ${o.kind}" style="left:${xOf(A)}px;width:${xOf(B) - xOf(A)}px;top:${winY}px;height:${totalH - winY}px" data-tip="${o.name} ${minText(o.from)}–${minText(o.to)}"></div>`);
+    });
+    const t = d.getTime();
+    const x = Math.max(0, xOf(t));
+    if (t >= t0) html.push(`<div class="midnight" style="left:${x}px;top:0;height:${totalH}px"></div>`);
+    const next = new Date(d); next.setDate(next.getDate() + 1);
+    const text = dayLabel(Math.max(t, t0));
+    if (xOf(Math.min(next.getTime(), t1)) - x > measure(text, "600 12px system-ui") + 12) {
+      html.push(`<div class="day" style="left:${x + 6}px;top:4px">${text}</div>`);
     }
-    html.push(`<div class="band ${band.k === "sleep" ? "sleep" : "meal"}" style="left:${left}px;width:${w}px;top:${trackTop}px;height:${trackH}px">${label}</div>`);
-    band = null;
-  };
-  for (let t = Math.ceil(t0 / STEP) * STEP; t < t1; t += STEP) {
-    if (blocked(t)) {
-      const k = kind(t);
-      if (!band) band = { s: t, k };
-      else if (band.k !== k) { flush(t); band = { s: t, k }; }
-    } else flush(t);
   }
-  flush(t1);
 
-  rounds.forEach(r => {
-    const bh = 28;
-    const by = trackTop + (trackH - bh) / 2;
-    const y = by + bh / 2;
-    if (r.start > r.cron) {
-      html.push(`<div class="link" style="left:${xOf(r.cron)}px;width:${xOf(r.start) - xOf(r.cron)}px;top:${y - 1}px"></div>`);
-    }
-    const x1 = xOf(r.start), x2 = xOf(r.reset), x3 = xOf(r.end);
-    html.push(`<div class="burn b1" style="left:${x1}px;width:${Math.max(2, (r.dur2 > 0 ? x2 - 1 : x3) - x1)}px;top:${by}px;height:${bh}px"></div>`);
+  const every = pxH >= 26 ? 3 : 6;
+  for (let t = t0; t <= t1; t += HOUR) {
+    const h = new Date(t).getHours();
+    if (h % every || h === 0) continue;
+    const x = xOf(t);
+    if (x > 14 && x < width - 14) html.push(`<div class="hour" style="left:${x}px;top:21px">${pad(h)}:00</div>`);
+  }
+
+  rounds.forEach((r, i) => {
+    const n = i + 1;
+    const wy = winY + 7, wh = WIN - 14;
+    const box = (a, b, cls, tip, reserve) => {
+      const x = xOf(a), w = xOf(b) - x;
+      const label = `↻ ${hhmm(b)}`;
+      html.push(`<div class="win ${cls}" style="left:${x}px;width:${w - 2}px;top:${wy}px;height:${wh}px" data-tip="${tip}">${w > measure(label) + reserve ? label : ""}</div>`);
+    };
+    box(r.cron, r.reset, "w1", `Round ${n} · window 1\n${hhmm(r.cron)} → resets ${stamp(r.reset)}`, measure(hhmm(r.cron)) + 26);
+    if (r.w2End) box(r.reset, r.w2End, "w2", `Round ${n} · window 2\n${hhmm(r.reset)} → resets ${stamp(r.w2End)}`, 16);
+
+    const xc = xOf(r.cron);
+    html.push(`<div class="trig" style="left:${xc}px;top:${winY + WIN / 2}px" data-tip="Round ${n} · trigger\n${stamp(r.cron)}\ncron ${cronExpr(r.cron)}"></div>`);
+    html.push(`<div class="trig-label" style="left:${xc + 10}px;top:${winY + WIN / 2 - 8}px">${hhmm(r.cron)}</div>`);
+
+    const by = useY + 9, bh = USE - 18;
+    const x1 = xOf(r.start), xr = xOf(r.start + r.dur1), x3 = xOf(r.end);
+    html.push(`<div class="burn b1" style="left:${x1}px;width:${Math.max(2, xr - x1 - 1)}px;top:${by}px;height:${bh}px" data-tip="Quota 1 · ${hhmm(r.start)}–${hhmm(r.start + r.dur1)} (${hoursText(r.dur1)})"></div>`);
     if (r.dur2 > 0) {
-      html.push(`<div class="burn b2" style="left:${x2 + 1}px;width:${Math.max(2, x3 - x2 - 1)}px;top:${by}px;height:${bh}px"></div>`);
+      html.push(`<div class="burn b2" style="left:${xr + 1}px;width:${Math.max(2, x3 - xr - 1)}px;top:${by}px;height:${bh}px" data-tip="Quota 2 · ${hhmm(r.reset)}–${hhmm(r.end)} (${hoursText(r.dur2)})"></div>`);
     }
-    html.push(`<div class="dot" style="left:${xOf(r.cron)}px;top:${y}px"></div>`);
+    if (x1 - xc > measure(hhmm(r.start)) + 14) {
+      html.push(`<div class="use-at" style="left:${x1}px;top:${by + bh / 2 - 8}px">${hhmm(r.start)}</div>`);
+    }
   });
 
-  events.forEach(e => {
-    const top = dateH + (timeLanes - 1 - e.lane) * laneH;
-    html.push(`<div class="tml" style="left:${e.x}px;top:${top}px;color:${e.color}">${e.text}</div>`);
-  });
-  grid.forEach(g => {
-    if (g.lane < 0) return;
-    const top = dateH + (timeLanes - 1 - g.lane) * laneH;
-    html.push(`<div class="tml" style="left:${g.x}px;top:${top}px;color:${g.color};font-weight:500">${g.text}</div>`);
-  });
+  const now = Date.now();
+  if (now > t0 && now < t1) html.push(`<div class="now" style="left:${xOf(now)}px;top:${winY}px;height:${totalH - winY}px" data-tip="Now"></div>`);
 
-  durs.forEach(d => {
-    const top = trackTop + trackH + 8 + d.lane * laneH;
-    html.push(`<div class="dur" style="left:${xOf(d.a)}px;width:${Math.max(1, xOf(d.b) - xOf(d.a))}px;top:${top}px;color:${d.color}"><span>${d.text}</span></div>`);
-  });
+  tl.innerHTML = html.join("");
+}
 
-  const track = `<div class="track" style="top:${trackTop}px;height:${trackH}px"></div>`;
-  tl.innerHTML = track + html.join("");
-
-  prompts.innerHTML = rounds.map(r => {
-    return `<div class="prompt"><div class="when">${stamp(r.cron)}</div><p>Use the cheapest model. Reply "hi" and nothing else.</p></div>`;
+function renderSchedule({ rounds }, valid) {
+  if (!valid || !rounds.length) {
+    $("schedule").innerHTML = `<div class="empty">${valid ? "No round fits in this range." : "End must be after start."}</div>`;
+    return;
+  }
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+  const rows = rounds.map((r, i) => {
+    const expr = cronExpr(r.cron);
+    return `<tr>
+      <td>${i + 1}</td>
+      <td><span class="t-trig">${hhmm(r.cron)}</span> <span class="sub">${shortDay(r.cron)}</span></td>
+      <td class="hide-sm"><span class="cron"><code class="mono">${expr}</code><button class="ghost" type="button" data-copy="${expr}" aria-label="Copy ${expr}" title="Copy">${COPY_ICON}</button></span></td>
+      <td>${hhmm(r.start)}–${hhmm(r.end)} <span class="sub">${shortDay(r.start)}</span></td>
+      <td><span class="t-q1">${hhmm(r.reset)}</span>${r.w2End ? ` <span class="sub">·</span> <span class="t-q2">${hhmm(r.w2End)}</span>` : ""}</td>
+    </tr>`;
   }).join("");
+  $("schedule").innerHTML = `<table>
+    <thead><tr><th>#</th><th>Trigger</th><th class="hide-sm">Cron (${tz})</th><th>Heavy use</th><th>Resets</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+function buildRules({ st, rounds, used }) {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
+  const off = OFF_HOURS.map(o => `${o.name.toLowerCase()} ${minText(o.from)}-${minText(o.to)}`).join(", ");
+  const L = [
+    "# 5-hour quota plan",
+    "",
+    "Help me create scheduled jobs that open my AI coding tool's 5-hour usage window at the times below.",
+    "",
+    "## Rules",
+    "- Usage is metered in a 5-hour window. It opens with the first message sent while no window is active and resets 5 hours later.",
+    `- Weekly cap: about ${+st.cap.toFixed(3)} windows. Burning one window's quota takes me about ${st.burnH}h.`,
+    `- A job sends a tiny prompt at T to open window 1. I start heavy use at T + 5h - ${st.burnH}h, so quota 1 runs out at the reset (T + 5h). My next message opens window 2, which I burn right away.`,
+    "- The next trigger fires only after window 2 expires (T + 10h or later). A trigger inside an active window does nothing.",
+    `- Heavy use avoids ${off}. Triggers may fire then.`,
+    "",
+    `Trigger prompt (cheapest model): \`${PROMPT}\``,
+    ""
+  ];
+  if (rounds.length) {
+    L.push(`## Schedule (${tz})`);
+    L.push("");
+    L.push("| # | Trigger | Cron | Heavy use | Window 1 resets | Window 2 resets |");
+    L.push("|---|---|---|---|---|---|");
+    rounds.forEach((r, i) => {
+      L.push(`| ${i + 1} | ${isoLocal(r.cron)} | \`${cronExpr(r.cron)}\` | ${stamp(r.start)}-${hhmm(r.end)} | ${hhmm(r.reset)} | ${r.w2End ? hhmm(r.w2End) : "-"} |`);
+    });
+    L.push("");
+    L.push(`Weekly quota used: ${+used.toFixed(2)} / ${+st.cap.toFixed(3)}.`);
+    L.push("");
+    L.push("Each job runs once (the cron lines pin day and month). Show me the jobs before installing them.");
+  } else {
+    L.push("No round fits in the current range.");
+  }
+  return L.join("\n");
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (_) {}
+    ta.remove();
+    return ok;
+  }
+}
+let toastTimer;
+function toast(msg) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("on"), 1600);
+}
+
+function setupTips() {
+  const tip = $("tip");
+  const tl = $("tl");
+  tl.addEventListener("pointermove", e => {
+    const el = e.target.closest("[data-tip]");
+    if (!el) { tip.classList.remove("on"); return; }
+    tip.textContent = el.dataset.tip;
+    tip.classList.add("on");
+    const r = tip.getBoundingClientRect();
+    let left = e.clientX + 12, top = e.clientY + 14;
+    if (left + r.width > innerWidth - 8) left = e.clientX - r.width - 12;
+    if (top + r.height > innerHeight - 8) top = e.clientY - r.height - 12;
+    tip.style.left = Math.max(8, left) + "px";
+    tip.style.top = Math.max(8, top) + "px";
+  });
+  tl.addEventListener("pointerleave", () => tip.classList.remove("on"));
+  $("wrap").addEventListener("scroll", () => tip.classList.remove("on"), { passive: true });
+}
+
+const FIELDS = ["start", "startTime", "end", "endTime", "burn", "cap"];
+function saveState() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(FIELDS.map(id => [id, $(id).value]))));
+  } catch (_) {}
+}
+function loadState() {
+  try {
+    const o = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (!o) return false;
+    FIELDS.forEach(id => { if (typeof o[id] === "string") $(id).value = o[id]; });
+    return true;
+  } catch (_) { return false; }
 }
 
 function init() {
-  const s = new Date();
-  s.setHours(10, 0, 0, 0);
-  const pad = n => String(n).padStart(2, "0");
-  const date = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const time = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   let options = "";
-  for (let m = 0; m < 1440; m += 15) {
-    const v = `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
-    options += `<option value="${v}">${v}</option>`;
-  }
+  for (let m = 0; m < 1440; m += 15) options += `<option value="${minText(m)}">${minText(m)}</option>`;
   $("startTime").innerHTML = options;
   $("endTime").innerHTML = options;
-  const e = new Date(s.getTime() + 48 * HOUR);
-  $("start").value = date(s);
-  $("startTime").value = time(s);
-  $("end").value = date(e);
-  $("endTime").value = time(e);
+  if (!loadState()) {
+    const s = new Date();
+    s.setHours(10, 0, 0, 0);
+    const e = new Date(s.getTime() + 48 * HOUR);
+    const date = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    $("start").value = date(s);
+    $("startTime").value = hhmm(s);
+    $("end").value = date(e);
+    $("endTime").value = hhmm(e);
+  }
+  $("promptText").textContent = PROMPT;
+  $("copyPrompt").innerHTML = COPY_ICON;
   document.querySelectorAll("input, select").forEach(el => el.addEventListener("input", render));
-  new ResizeObserver(render).observe($("wrap"));
+
+  $("copyRules").addEventListener("click", async () => {
+    const ok = await copyText(buildRules(current));
+    const label = $("copyRulesText");
+    label.textContent = ok ? "Copied" : "Copy failed";
+    setTimeout(() => { label.textContent = "Copy rules for LLM"; }, 1600);
+  });
+  $("copyPrompt").addEventListener("click", async () => toast(await copyText(PROMPT) ? "Prompt copied" : "Copy failed"));
+  $("schedule").addEventListener("click", async e => {
+    const b = e.target.closest("[data-copy]");
+    if (b) toast(await copyText(b.dataset.copy) ? `Copied ${b.dataset.copy}` : "Copy failed");
+  });
+
+  setupTips();
+  let lastW = 0;
+  new ResizeObserver(() => {
+    const w = $("wrap").clientWidth;
+    if (w !== lastW) { lastW = w; render(); }
+  }).observe($("wrap"));
   render();
 }
 init();
