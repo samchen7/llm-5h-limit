@@ -6,25 +6,26 @@ A single-page timeline calculator for squeezing the most out of $20 Claude and C
 
 ## Idea
 
-Both plans use a rolling 5-hour usage window, and the weekly cap is roughly 7.7 of those windows. A 5-hour window starts at your first message, so:
+Both plans use a rolling 5-hour usage window, and the weekly cap is roughly 7.7 of those windows. A window opens with your first message and resets 5 hours later, so the plan follows your day:
 
-1. A scheduled job sends a tiny prompt to open the window early.
-2. You start heavy use near the end of that window and burn through it.
-3. The window resets, and you keep going on a fresh one.
-
-Each round burns two 5-hour quotas per tool back-to-back. Run Claude and Codex side by side and one round is four quotas, about half a weekly allowance. Four rounds use up the weekly cap within 48 hours.
+1. **Before you wake up** (and before the hackathon starts), a cron job sends a tiny prompt. The window it opens resets shortly after you start working, so you burn that quota in one burst and get a fresh window right away.
+2. **During the day**, the first message after each reset opens the next window. Windows run back to back, and each quota is spread over its window, so the work per hour stays light.
+3. **At bedtime**, whatever window is open has to be used up before you sleep.
 
 ## Usage
 
-Set the start and end time, how long it takes you to burn one 5-hour quota, and the weekly quota size (in 5-hour units). The timeline shows:
+Set the start and end time on the page. **Settings** (top right) holds the rest: how long it takes you to burn one 5-hour quota, the weekly quota size (in 5-hour units), and your sleep, breakfast, lunch and dinner times (a length of 0 turns one off). Work never overlaps those off-hours.
 
-- **Green dot**: when the scheduled prompt should fire
-- **Orange / yellow**: the first and second quota of each round
-- **Shaded bands**: sleep (00:00–06:00), lunch (12:00–13:00), dinner (18:00–19:00), which heavy use avoids
+The hour grid has one cell per hour (a row per day on desktop, a column per day on phones):
 
-Below the timeline:
+- **Green**: quota being spent. Dark cells are the burst right after waking (the cron window); lighter cells are daytime windows, whose quota is spread over five hours.
+- **Light green ring**: a cron trigger fires in that hour.
+- **Grey**: sleep and meals.
+- **White**: free.
 
-- **Schedule**: each round's trigger time, local cron expression, both 5-hour windows and their reset times
+Below the grid:
+
+- **Schedule**: every window, whether a cron job or your first message opens it, when you work in it, the load per hour and when it resets
 - **Trigger prompt**: the tiny prompt each cron job sends
 
 **Copy rules for LLM** (top right) copies the rules plus the current schedule as Markdown. Paste it into Claude or Codex and ask it to create the cron jobs.

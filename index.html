@@ -48,6 +48,10 @@
       color-scheme: dark;
     }
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .hm-scope { --g1: #0e4429; --g2: #006d32; --g3: #26a641; --g4: #39d353; --ring: #7ee2a0; --rest: #2b2f36; }
+  }
+  :root[data-theme="dark"] .hm-scope { --g1: #0e4429; --g2: #006d32; --g3: #26a641; --g4: #39d353; --ring: #7ee2a0; --rest: #2b2f36; }
   :root[data-theme="dark"] {
     --bg: #0e1013;
     --surface: #15181d;
@@ -82,10 +86,11 @@
   main {
     max-width: 1120px;
     margin: 0 auto;
-    padding: 24px max(24px, env(safe-area-inset-right)) 48px max(24px, env(safe-area-inset-left));
+    padding: 20px max(24px, env(safe-area-inset-right)) 24px max(24px, env(safe-area-inset-left));
   }
 
-  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+  .actions { display: flex; gap: 8px; position: relative; }
   h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
   h1 span { color: var(--muted); font-weight: 450; }
 
@@ -109,6 +114,27 @@
   button svg { width: 15px; height: 15px; flex: 0 0 auto; }
   button.ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 3px; }
   button.ghost:hover { color: var(--ink); background: var(--surface-2); opacity: 1; }
+  button.secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
+  button.secondary:hover { opacity: 1; border-color: var(--faint); }
+  button.secondary[aria-expanded="true"] { border-color: var(--ink); }
+
+  /* Settings popover */
+  .panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 400px;
+    z-index: 40;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+    padding: 14px 16px 16px;
+  }
+  .panel[hidden] { display: none; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+  .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .panel-grid .pair select { flex: 1 1 0; min-width: 0; }
 
   .card {
     background: var(--surface);
@@ -116,16 +142,12 @@
     border-radius: 12px;
     overflow: hidden;
   }
-  .card + .card { margin-top: 16px; }
+  .card + .card { margin-top: 12px; }
 
-  /* Controls */
-  .controls {
-    display: grid;
-    grid-template-columns: 1.3fr 1.3fr 1fr 1fr;
-    gap: 14px;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--line);
-  }
+  /* Range bar */
+  .bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; padding: 12px 16px; }
+  .bar .field { width: 250px; }
+  select.is-off { color: var(--faint); }
   label { display: block; color: var(--muted); font-size: 12px; font-weight: 500; margin-bottom: 5px; }
   .pair { display: flex; gap: 6px; }
   .pair input { flex: 1 1 auto; min-width: 0; }
@@ -140,64 +162,66 @@
     color: var(--ink);
     font: inherit;
   }
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 26px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%239a9da4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px 6px;
+  }
   .unit { position: relative; }
   .unit input { padding-right: 38px; }
   .unit span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--faint); font-size: 12px; pointer-events: none; }
 
-  /* Summary line */
-  .summary {
-    display: flex;
-    align-items: center;
-    gap: 6px 18px;
-    flex-wrap: wrap;
-    padding: 12px 16px;
-    font-size: 13px;
-    color: var(--muted);
-  }
-  .summary b { color: var(--ink); font-weight: 650; }
-  .summary .warn { color: var(--warn); }
-  .legend { margin-left: auto; display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; }
-  .legend span { display: inline-flex; align-items: center; gap: 5px; }
-  .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
-  .legend i.dot { border-radius: 50%; background: var(--trigger); }
-  .legend i.q1 { background: var(--q1); }
-  .legend i.q2 { background: var(--q2); }
-  .legend i.off { background: repeating-linear-gradient(135deg, var(--off-hatch) 0 2px, transparent 2px 4px), var(--off); border: 1px solid var(--line); }
+  #summary { margin-left: auto; font-size: 13px; color: var(--muted); padding-bottom: 8px; }
+  #summary b { color: var(--ink); font-weight: 650; }
+  #summary .warn { color: var(--warn); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: flex-end; font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 3px; }
+  .legend .cell { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+  .legend .cell.has-trig { outline-offset: 0; outline-width: 1.5px; margin: 0 3px; }
 
-  /* Timeline */
-  .tl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; border-top: 1px solid var(--line); }
-  .tl { position: relative; }
-  .tl > div { position: absolute; }
-  .row-line { left: 0; right: 0; height: 1px; background: var(--line); }
-  .off { background: var(--off); }
-  .off.sleep { background: repeating-linear-gradient(135deg, var(--off-hatch) 0 2px, transparent 2px 6px), var(--off); }
-  .midnight { width: 1px; background: var(--line-strong); z-index: 1; }
-  .day { font-size: 12px; font-weight: 600; white-space: nowrap; z-index: 2; }
-  .hour { font-size: 11px; color: var(--faint); transform: translateX(-50%); white-space: nowrap; z-index: 2; }
-  .lane { font-size: 11px; color: var(--faint); z-index: 2; left: 8px; }
-  .win {
-    z-index: 2;
-    border-radius: 6px;
-    border: 1.5px solid;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 0 6px;
-    font-size: 11px;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
+  /* Hour grid: green depth = minutes of heavy use in that hour */
+  .hm-scope {
+    --g0: var(--surface);
+    --g1: #c6ecd0;
+    --g2: #7fd494;
+    --g3: #36ad57;
+    --g4: #1d7a3a;
+    --ring: #86d99b;
+    --rest: #e4e3de;
   }
-  .win.w1 { border-color: var(--q1); background: var(--q1-tint); color: var(--q1); }
-  .win.w2 { border-color: var(--q2); background: var(--q2-tint); color: var(--q2); }
-  .burn { z-index: 2; border-radius: 5px; }
-  .burn.b1 { background: var(--q1); }
-  .burn.b2 { background: var(--q2); }
-  .use-at { z-index: 2; font-size: 11px; color: var(--muted); white-space: nowrap; transform: translateX(-100%); padding-right: 5px; }
-  .trig { z-index: 3; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: var(--trigger); box-shadow: 0 0 0 3px var(--surface); }
-  .trig-label { z-index: 3; font-size: 11px; font-weight: 650; color: var(--trigger); white-space: nowrap; }
-  .now { z-index: 4; width: 2px; margin-left: -1px; background: var(--now); }
-
+  .grid-view {
+    border-top: 1px solid var(--line);
+    padding: 12px 16px 12px;
+  }
+  .hm { display: grid; gap: 4px; align-items: center; }
+  .hm.by-day { grid-template-columns: 92px repeat(24, minmax(0, 1fr)) 48px; }
+  .hm.by-hour { grid-template-columns: 26px repeat(var(--days), minmax(0, 1fr)); gap: 3px 6px; }
+  .hm .hl { font-size: 11px; color: var(--faint); text-align: center; white-space: nowrap; }
+  .hm.by-hour .hl { text-align: right; font-size: 10px; }
+  .hm .dl { font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .hm .dl small { color: var(--faint); font-weight: 450; margin-left: 4px; }
+  .hm.by-hour .dl { text-align: center; padding-bottom: 2px; }
+  .hm.by-hour .dl small { display: block; margin: -2px 0 0; font-size: 10px; }
+  .hm .tot { font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; }
+  .hm.by-hour .tot { text-align: center; padding-top: 4px; font-weight: 600; color: var(--ink); }
+  .cell {
+    height: 26px;
+    border-radius: 4px;
+    background: var(--g0);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .hm.by-hour .cell { height: 16px; border-radius: 3px; }
+  .cell.l1 { background: var(--g1); box-shadow: none; }
+  .cell.l2 { background: var(--g2); box-shadow: none; }
+  .cell.l3 { background: var(--g3); box-shadow: none; }
+  .cell.l4 { background: var(--g4); box-shadow: none; }
+  .cell.out { background: var(--surface-2); box-shadow: none; }
+  .cell.rest { background: var(--rest); box-shadow: none; }
+  .cell.has-trig { outline: 2px solid var(--ring); outline-offset: 1px; }
   .tip {
     position: fixed;
     z-index: 50;
@@ -220,26 +244,28 @@
     font-size: 12px;
     font-weight: 500;
     color: var(--muted);
-    padding: 9px 12px;
+    padding: 7px 10px;
     border-bottom: 1px solid var(--line);
     white-space: nowrap;
   }
-  td { padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   tr:last-child td { border-bottom: 0; }
-  th:first-child, td:first-child { padding-left: 16px; color: var(--faint); }
+  th:first-child, td:first-child { padding-left: 16px; color: var(--faint); width: 1%; }
   th:last-child, td:last-child { padding-right: 16px; }
+  .cell.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
   .sub { color: var(--muted); }
   .t-trig { color: var(--trigger); font-weight: 650; }
   .t-q1 { color: var(--q1); }
   .t-q2 { color: var(--q2); }
   .cron { display: inline-flex; align-items: center; gap: 2px; }
-  .cron code { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+  .cron code { background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; font-size: 12px; }
+  .cron button.ghost svg { width: 13px; height: 13px; }
   .empty { padding: 24px 16px; color: var(--muted); text-align: center; }
   .foot {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px;
+    padding: 8px 16px;
     border-top: 1px solid var(--line);
     font-size: 12px;
     color: var(--muted);
@@ -264,59 +290,78 @@
   .toast.on { display: block; }
 
   @media (max-width: 860px) {
-    .controls { grid-template-columns: 1fr 1fr; }
-    .legend { margin-left: 0; }
+    #summary { margin-left: 0; padding-bottom: 0; }
   }
   @media (max-width: 640px) {
+    .grid-view { padding: 12px; }
     main { padding: 16px max(16px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
     h1 span { display: none; }
-    .controls { grid-template-columns: 1fr; gap: 12px; }
-    input, select { height: 44px; font-size: 16px; }
+    .bar { padding: 12px; }
+    .bar .field { width: 100%; }
+    input, select { height: 42px; font-size: 16px; }
     .pair select { flex-basis: 100px; }
+    .actions .label-md { display: none; }
+    .panel-grid { grid-template-columns: 1fr; gap: 10px; }
+    .panel { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; max-height: calc(100vh - 80px); overflow: auto; }
+    .legend { justify-content: flex-start; gap: 10px; }
     th.hide-sm, td.hide-sm { display: none; }
-    td, th { padding-left: 8px; padding-right: 8px; }
+    table { font-size: 12.5px; }
+    td, th { padding-left: 6px; padding-right: 6px; }
+    th:nth-child(2), td:nth-child(2) { padding-left: 12px; }
+    th:last-child, td:last-child { padding-right: 12px; }
   }
 </style>
 </head>
 <body>
-<main>
+<main class="hm-scope">
   <header>
     <h1>5h Quota Planner <span>· spend every 5-hour window</span></h1>
-    <button id="copyRules" type="button" title="Copy the rules and schedule as a prompt for an LLM">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>
-      <span id="copyRulesText">Copy rules for LLM</span>
-    </button>
+    <div class="actions">
+      <button class="secondary" id="openSettings" type="button" aria-expanded="false" aria-controls="settings" title="Settings">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h6M11.5 4.5h2M2.5 11.5h2M7.5 11.5h6"/><circle cx="10" cy="4.5" r="1.5"/><circle cx="6" cy="11.5" r="1.5"/></svg><span class="label-md">Settings</span>
+      </button>
+      <button id="copyRules" type="button" title="Copy the rules and schedule as a prompt for an LLM">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>
+        <span id="copyRulesText">Copy rules<span class="label-md"> for LLM</span></span>
+      </button>
+      <div class="panel" id="settings" role="dialog" aria-label="Settings" hidden>
+        <div class="panel-head"><b>Settings</b><button class="ghost" type="button" id="closeSettings" aria-label="Close settings">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+        <div class="panel-grid">
+          <div>
+            <label for="burn">Hours to burn one quota</label>
+            <div class="unit"><input id="burn" type="number" value="1.5" min="0.25" max="4" step="0.25" inputmode="decimal"><span>h</span></div>
+          </div>
+          <div>
+            <label for="cap">Weekly cap</label>
+            <div class="unit"><input id="cap" type="number" value="7.692" min="0.25" step="0.001" inputmode="decimal"><span>× 5h</span></div>
+          </div>
+        </div>
+        <div class="panel-grid" id="offs" style="margin-top:12px"></div>
+      </div>
+    </div>
   </header>
 
   <section class="card">
-    <div class="controls">
-      <div>
+    <div class="bar">
+      <div class="field">
         <label for="start">Start</label>
         <div class="pair"><input id="start" type="date"><select id="startTime" aria-label="Start time"></select></div>
       </div>
-      <div>
+      <div class="field">
         <label for="end">End</label>
         <div class="pair"><input id="end" type="date"><select id="endTime" aria-label="End time"></select></div>
       </div>
-      <div>
-        <label for="burn">Hours to burn one quota</label>
-        <div class="unit"><input id="burn" type="number" value="1.5" min="0.25" max="4" step="0.25" inputmode="decimal"><span>h</span></div>
-      </div>
-      <div>
-        <label for="cap">Weekly cap</label>
-        <div class="unit"><input id="cap" type="number" value="7.692" min="0.25" step="0.001" inputmode="decimal"><span>× 5h</span></div>
-      </div>
-    </div>
-    <div class="summary">
       <span id="summary"></span>
+    </div>
+    <div class="grid-view">
+      <div id="gridView"></div>
       <div class="legend">
-        <span><i class="dot"></i>Trigger</span>
-        <span><i class="q1"></i>Quota 1</span>
-        <span><i class="q2"></i>Quota 2</span>
-        <span><i class="off"></i>Off-hours</span>
+        <span>Less <i class="cell"></i><i class="cell l1"></i><i class="cell l2"></i><i class="cell l3"></i><i class="cell l4"></i> More</span>
+        <span><i class="cell rest"></i>Meals / sleep</span>
+        <span><i class="cell has-trig"></i>Cron trigger</span>
       </div>
     </div>
-    <div class="tl-scroll" id="wrap"><div class="tl" id="tl"></div></div>
   </section>
 
   <section class="card">
@@ -334,20 +379,19 @@ const HOUR = 3600e3;
 const STEP = 15 * 60e3;
 const WINDOW = 5 * HOUR;
 const PROMPT = 'Use the cheapest model. Reply "hi" and nothing else.';
-const OFF_HOURS = [
-  { name: "Sleep", kind: "sleep", from: 0, to: 360 },
-  { name: "Lunch", kind: "meal", from: 720, to: 780 },
-  { name: "Dinner", kind: "meal", from: 1080, to: 1140 }
+/* Off-hours: heavy use never overlaps these. `from` and `dur` are minutes; a block may cross midnight. */
+const OFF_DEFAULTS = [
+  { id: "sleep", name: "Sleep", kind: "sleep", from: 0, dur: 360 },
+  { id: "breakfast", name: "Breakfast", kind: "meal", from: 480, dur: 0 },
+  { id: "lunch", name: "Lunch", kind: "meal", from: 720, dur: 60 },
+  { id: "dinner", name: "Dinner", kind: "meal", from: 1080, dur: 60 }
 ];
+const OFF_MAX = { sleep: 720, breakfast: 180, lunch: 180, dinner: 180 };
+let OFF_HOURS = OFF_DEFAULTS.map(o => ({ ...o }));
 const STORE_KEY = "llm-5h-planner";
 const COPY_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>`;
 const $ = id => document.getElementById(id);
-const ctx = document.createElement("canvas").getContext("2d");
 
-function measure(text, font = '600 11px system-ui, -apple-system, sans-serif') {
-  ctx.font = font;
-  return ctx.measureText(text).width;
-}
 const pad = n => String(n).padStart(2, "0");
 const hhmm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const dayLabel = t => new Date(t).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -359,12 +403,10 @@ const minText = m => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
 function offAt(t) {
   const d = new Date(t);
   const m = d.getHours() * 60 + d.getMinutes();
-  return OFF_HOURS.find(o => m >= o.from && m < o.to) || null;
+  return OFF_HOURS.find(o => o.dur > 0 && (m - o.from + 1440) % 1440 < o.dur) || null;
 }
-function free(a, b) {
-  for (let t = a; t < b; t += STEP) if (offAt(t)) return false;
-  return true;
-}
+const durText = m => m === 0 ? "off" : m % 60 ? `${Math.floor(m / 60) ? Math.floor(m / 60) + "h " : ""}${m % 60}m` : `${m / 60}h`;
+const offRange = o => `${minText(o.from)}–${minText(o.from + o.dur)}`;
 function cronExpr(t) {
   const d = new Date(t);
   return `${d.getMinutes()} ${d.getHours()} ${d.getDate()} ${d.getMonth() + 1} *`;
@@ -376,49 +418,92 @@ function isoLocal(t) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${hhmm(t)}${off >= 0 ? "+" : "-"}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
 }
 
-/* Each round: trigger opens window 1, quota 1 is burned right before the reset,
-   quota 2 is burned in window 2. The next trigger waits until window 2 expires. */
+const sleepAt = t => offAt(t)?.kind === "sleep";
+const align = t => Math.ceil((t - 1e-6) / STEP) * STEP;
+/* First moment >= t that is not sleep / not any off-hours (searches up to 3 days). */
+function firstAwake(t) {
+  for (let i = 0; i < 288 && sleepAt(t); i++) t += STEP;
+  return t;
+}
+function firstFree(t) {
+  for (let i = 0; i < 288 && offAt(t); i++) t += STEP;
+  return t;
+}
+function nextSleep(t) {
+  for (let i = 0; i < 288; i++, t += STEP) if (sleepAt(t)) return t;
+  return Infinity;
+}
+/* Free (non off-hours) milliseconds in [a, b). a sits on a 15-minute mark. */
+function freeMs(a, b) {
+  let ms = 0;
+  for (let t = a; t < b; t += STEP) if (!offAt(t)) ms += Math.min(STEP, b - t);
+  return ms;
+}
+function lastFreeEnd(a, b) {
+  let end = a;
+  for (let t = a; t < b; t += STEP) if (!offAt(t)) end = Math.min(t + STEP, b);
+  return end;
+}
+
+/* Daily rhythm:
+   - Before each awake stretch (hackathon start, every wake-up) a cron job opens a window early,
+     so it resets `burn` hours after work can start. That quota is burned in one dense burst.
+   - After each reset, the first message opens the next window. Windows run back to back all day
+     and each quota is spread evenly over the free time of its window.
+   - Whatever window is open at bedtime has to be used up before sleep. */
 function plan(S, E, burnH, cap) {
-  const b = burnH * HOUR;
-  const rounds = [];
+  const B = burnH * HOUR;
+  const windows = [];
   let used = 0;
-  let prevReset = -Infinity;
-  let cursor = S;
-  while (used < cap - 1e-6 && rounds.length < 24) {
-    const left = cap - used;
-    const w1 = Math.min(1, left);
-    let w2 = Math.min(1, left - w1);
-    if (w2 < 1e-6) w2 = 0;
-    const dur1 = w1 * b;
-    const dur2 = w2 * b;
-    const total = dur1 + dur2;
-    let earliest = cursor;
-    if (prevReset > -Infinity) {
-      earliest = Math.max(earliest, w2 > 0 ? prevReset + 2 * WINDOW - dur1 : prevReset + WINDOW);
+  let cursor = S;          // earliest moment the next window may open
+  let stretch = true;      // next window starts an awake stretch (start or after sleep)
+  for (let guard = 0; guard < 200 && used < cap - 1e-6 && windows.length < 60; guard++) {
+    const t = align(cursor);
+    if (t >= E) break;
+    const work = firstFree(t);
+    if (work >= E) break;
+    const crossed = stretch || nextSleep(t) < work;
+    let open, kind;
+    if (crossed) {
+      const ideal = Math.floor((work + B - WINDOW) / STEP) * STEP;
+      open = windows.length === 0 ? ideal : Math.max(ideal, t);
+      kind = open < work ? "cron" : "message";
+      if (kind === "message") open = work;
+    } else {
+      open = work;
+      kind = "message";
+      // A short window late at night would push the next morning's cron back: skip it.
+      const ns = nextSleep(open);
+      if (ns < E) {
+        const nextWork = firstFree(firstAwake(ns));
+        const idealNext = nextWork + B - WINDOW;
+        if (freeMs(open, Math.min(open + WINDOW, E)) < B && open + WINDOW > idealNext) {
+          cursor = ns;
+          stretch = true;
+          continue;
+        }
+      }
     }
-    let found = null;
-    for (let t = Math.ceil((earliest - 1e-6) / STEP) * STEP; t + total <= E + 1; t += STEP) {
-      if (free(t, t + total)) { found = t; break; }
-    }
-    if (found == null) break;
-    const reset = found + dur1;
-    const cron = w2 > 0 ? reset - WINDOW : found;
-    rounds.push({
-      cron,
-      start: found,
-      reset: w2 > 0 ? reset : cron + WINDOW,
-      w2End: w2 > 0 ? reset + WINDOW : null,
-      end: found + total,
-      dur1, dur2, w1, w2
+    const reset = open + WINDOW;
+    const from = align(Math.max(open, S)), to = Math.min(reset, E);
+    const usable = freeMs(from, to);
+    if (usable <= 0) { cursor = reset; stretch = false; continue; }
+    const q = Math.min(1, usable / B, cap - used);
+    windows.push({
+      kind, open, reset, q, usable,
+      rate: q * B / usable,
+      workFrom: firstFree(from),
+      workTo: lastFreeEnd(from, to)
     });
-    used += w1 + w2;
-    prevReset = reset;
-    cursor = found + total;
+    used += q;
+    cursor = reset;
+    stretch = false;
   }
-  return { rounds, used };
+  return { windows, used };
 }
 
 function readState() {
+  readOffHours();
   return {
     S: new Date(`${$("start").value}T${$("startTime").value}`).getTime(),
     E: new Date(`${$("end").value}T${$("endTime").value}`).getTime(),
@@ -433,159 +518,165 @@ function render() {
   const st = readState();
   saveState();
   const valid = st.E > st.S;
-  const { rounds, used } = valid ? plan(st.S, st.E, st.burnH, st.cap) : { rounds: [], used: 0 };
-  current = { st, rounds, used };
+  const { windows, used } = valid ? plan(st.S, st.E, st.burnH, st.cap) : { windows: [], used: 0 };
+  current = { st, windows, used };
   renderSummary(current, valid);
-  renderTimeline(current, valid);
+  renderGrid(current, valid);
   renderSchedule(current, valid);
 }
 
-function renderSummary({ st, rounds, used }, valid) {
+const qText = q => `${+q.toFixed(2)}`;
+const perHour = w => `${Math.round(w.rate * 60)} min/h`;
+
+function renderSummary({ st, windows, used }, valid) {
   const el = $("summary");
   if (!valid) { el.innerHTML = `<span class="warn">End must be after start.</span>`; return; }
   const left = st.cap - used;
-  const last = rounds[rounds.length - 1];
+  const crons = windows.filter(w => w.kind === "cron").length;
+  const last = windows[windows.length - 1];
   const parts = [
-    `<b>${rounds.length}</b> rounds`,
+    `<b>${windows.length}</b> windows`,
+    `<b>${crons}</b> cron ${crons === 1 ? "job" : "jobs"}`,
     `<b>${+used.toFixed(2)}</b> / ${+st.cap.toFixed(3)} weekly quota`,
-    last ? `done <b>${shortDay(last.end)} ${hhmm(last.end)}</b>` : ""
+    last ? `done <b>${shortDay(last.workTo)} ${hhmm(last.workTo)}</b>` : ""
   ].filter(Boolean);
   el.innerHTML = parts.join(" · ") + (left > 1e-3 ? ` · <span class="warn">${+left.toFixed(2)} doesn't fit</span>` : "");
 }
 
-function renderTimeline({ st, rounds }, valid) {
-  const tl = $("tl");
-  if (!valid) { tl.innerHTML = ""; tl.style.height = "0"; return; }
-  const AXIS = 40, WIN = 38, USE = 38;
-  const winY = AXIS, useY = AXIS + WIN, totalH = AXIS + WIN + USE;
-
+/* GitHub-style grid: one cell per hour, green depth = minutes of quota burned, ring = cron trigger.
+   Wide screens: a row per day. Phones: a column per day, hours run downwards. */
+function renderGrid({ st, windows }, valid) {
+  const el = $("gridView");
+  if (!valid) { el.innerHTML = ""; return; }
   let t0 = st.S, t1 = st.E;
-  rounds.forEach(r => { t0 = Math.min(t0, r.cron); t1 = Math.max(t1, r.w2End || r.reset); });
-  t0 = Math.floor((t0 - HOUR) / HOUR) * HOUR;
-  t1 = Math.ceil((t1 + HOUR) / HOUR) * HOUR;
-  const spanH = (t1 - t0) / HOUR;
-  const wrapW = $("wrap").clientWidth || 800;
-  const width = Math.max(wrapW, Math.ceil(spanH * (wrapW < 640 ? 20 : 15)));
-  const pxH = width / spanH;
-  const xOf = t => (t - t0) / (t1 - t0) * width;
-  tl.style.width = width + "px";
-  tl.style.height = totalH + "px";
-  const html = [];
+  windows.forEach(w => { t0 = Math.min(t0, w.open); t1 = Math.max(t1, w.workTo); });
+  const day0 = new Date(t0); day0.setHours(0, 0, 0, 0);
+  const lastDay = new Date(t1 - 1); lastDay.setHours(0, 0, 0, 0);
 
-  html.push(`<div class="row-line" style="top:${winY}px"></div><div class="row-line" style="top:${useY}px"></div>`);
-
-  const dStart = new Date(t0); dStart.setHours(0, 0, 0, 0);
-  for (let d = new Date(dStart); d.getTime() < t1; d.setDate(d.getDate() + 1)) {
-    OFF_HOURS.forEach(o => {
-      const a = new Date(d); a.setHours(0, o.from, 0, 0);
-      const b = new Date(d); b.setHours(0, o.to, 0, 0);
-      const A = Math.max(a.getTime(), t0), B = Math.min(b.getTime(), t1);
-      if (B <= A) return;
-      html.push(`<div class="off ${o.kind}" style="left:${xOf(A)}px;width:${xOf(B) - xOf(A)}px;top:${winY}px;height:${totalH - winY}px" data-tip="${o.name} ${minText(o.from)}–${minText(o.to)}"></div>`);
+  const days = [];
+  for (let d = new Date(day0); d <= lastDay; d.setDate(d.getDate() + 1)) {
+    const cells = [];
+    let total = 0;
+    for (let h = 0; h < 24; h++) {
+      const a = new Date(d); a.setHours(h, 0, 0, 0);
+      const A = a.getTime(), B = A + HOUR;
+      let use = 0, trig = false;
+      const notes = [];
+      windows.forEach((w, i) => {
+        if (w.kind === "cron" && w.open >= A && w.open < B) { trig = true; notes.push(`Cron opens window ${i + 1} at ${hhmm(w.open)}`); }
+        if (w.kind === "message" && w.open >= A && w.open < B) notes.push(`First message opens window ${i + 1} at ${hhmm(w.open)}`);
+        const a1 = Math.max(A, w.open, st.S), b1 = Math.min(B, w.reset, st.E);
+        const ms = b1 > a1 ? w.rate * freeMs(a1, b1) : 0;
+        if (ms) notes.push(`Window ${i + 1} · ${Math.round(ms / 60e3)}m of work`);
+        use += ms;
+      });
+      total += use;
+      const min = use / 60e3;
+      const lvl = levelOf(min);
+      const out = B <= st.S || A >= st.E;
+      const off = offAt(A);
+      const rest = !lvl && !out && freeMs(A, B) <= HOUR / 2;
+      const cls = ["cell", lvl ? `l${lvl}` : "", trig ? "has-trig" : "", out && !lvl ? "out" : "", rest ? "rest" : ""].filter(Boolean).join(" ");
+      const tip = `${shortDay(A)} ${pad(h)}:00–${pad((h + 1) % 24)}:00\n${notes.length ? notes.join("\n") : off ? off.name : out ? "Outside the hackathon" : "Free"}`;
+      cells.push(`<div class="${cls}" data-tip="${tip}"></div>`);
+    }
+    const ts = d.getTime();
+    days.push({
+      cells,
+      total: total >= 60e3 ? hoursText(total) : "–",
+      name: shortDay(ts),
+      date: new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     });
-    const t = d.getTime();
-    const x = Math.max(0, xOf(t));
-    if (t >= t0) html.push(`<div class="midnight" style="left:${x}px;top:0;height:${totalH}px"></div>`);
-    const next = new Date(d); next.setDate(next.getDate() + 1);
-    const text = dayLabel(Math.max(t, t0));
-    if (xOf(Math.min(next.getTime(), t1)) - x > measure(text, "600 12px system-ui") + 12) {
-      html.push(`<div class="day" style="left:${x + 6}px;top:4px">${text}</div>`);
-    }
   }
 
-  const every = pxH >= 26 ? 3 : 6;
-  for (let t = t0; t <= t1; t += HOUR) {
-    const h = new Date(t).getHours();
-    if (h % every || h === 0) continue;
-    const x = xOf(t);
-    if (x > 14 && x < width - 14) html.push(`<div class="hour" style="left:${x}px;top:21px">${pad(h)}:00</div>`);
+  const html = [];
+  if (matchMedia("(max-width: 640px)").matches) {
+    html.push(`<div class="hm by-hour" style="--days:${days.length}"><span></span>`);
+    days.forEach(d => html.push(`<div class="dl">${d.name}<small>${d.date}</small></div>`));
+    for (let h = 0; h < 24; h++) {
+      html.push(`<span class="hl">${h % 3 === 0 ? pad(h) : ""}</span>`);
+      days.forEach(d => html.push(d.cells[h]));
+    }
+    html.push(`<span></span>`);
+    days.forEach(d => html.push(`<div class="tot">${d.total}</div>`));
+  } else {
+    html.push(`<div class="hm by-day"><span></span>`);
+    for (let h = 0; h < 24; h++) html.push(`<span class="hl">${pad(h)}</span>`);
+    html.push(`<span class="tot">use</span>`);
+    days.forEach(d => html.push(`<div class="dl">${d.name}<small>${d.date}</small></div>${d.cells.join("")}<div class="tot">${d.total}</div>`));
   }
-
-  rounds.forEach((r, i) => {
-    const n = i + 1;
-    const wy = winY + 7, wh = WIN - 14;
-    const box = (a, b, cls, tip, reserve) => {
-      const x = xOf(a), w = xOf(b) - x;
-      const label = `↻ ${hhmm(b)}`;
-      html.push(`<div class="win ${cls}" style="left:${x}px;width:${w - 2}px;top:${wy}px;height:${wh}px" data-tip="${tip}">${w > measure(label) + reserve ? label : ""}</div>`);
-    };
-    box(r.cron, r.reset, "w1", `Round ${n} · window 1\n${hhmm(r.cron)} → resets ${stamp(r.reset)}`, measure(hhmm(r.cron)) + 26);
-    if (r.w2End) box(r.reset, r.w2End, "w2", `Round ${n} · window 2\n${hhmm(r.reset)} → resets ${stamp(r.w2End)}`, 16);
-
-    const xc = xOf(r.cron);
-    html.push(`<div class="trig" style="left:${xc}px;top:${winY + WIN / 2}px" data-tip="Round ${n} · trigger\n${stamp(r.cron)}\ncron ${cronExpr(r.cron)}"></div>`);
-    html.push(`<div class="trig-label" style="left:${xc + 10}px;top:${winY + WIN / 2 - 8}px">${hhmm(r.cron)}</div>`);
-
-    const by = useY + 9, bh = USE - 18;
-    const x1 = xOf(r.start), xr = xOf(r.start + r.dur1), x3 = xOf(r.end);
-    html.push(`<div class="burn b1" style="left:${x1}px;width:${Math.max(2, xr - x1 - 1)}px;top:${by}px;height:${bh}px" data-tip="Quota 1 · ${hhmm(r.start)}–${hhmm(r.start + r.dur1)} (${hoursText(r.dur1)})"></div>`);
-    if (r.dur2 > 0) {
-      html.push(`<div class="burn b2" style="left:${xr + 1}px;width:${Math.max(2, x3 - xr - 1)}px;top:${by}px;height:${bh}px" data-tip="Quota 2 · ${hhmm(r.reset)}–${hhmm(r.end)} (${hoursText(r.dur2)})"></div>`);
-    }
-    if (x1 - xc > measure(hhmm(r.start)) + 14) {
-      html.push(`<div class="use-at" style="left:${x1}px;top:${by + bh / 2 - 8}px">${hhmm(r.start)}</div>`);
-    }
-  });
-
-  const now = Date.now();
-  if (now > t0 && now < t1) html.push(`<div class="now" style="left:${xOf(now)}px;top:${winY}px;height:${totalH - winY}px" data-tip="Now"></div>`);
-
-  tl.innerHTML = html.join("");
+  html.push(`</div>`);
+  el.innerHTML = html.join("");
 }
 
-function renderSchedule({ rounds }, valid) {
-  if (!valid || !rounds.length) {
-    $("schedule").innerHTML = `<div class="empty">${valid ? "No round fits in this range." : "End must be after start."}</div>`;
+const levelOf = min => min < 0.5 ? 0 : min <= 15 ? 1 : min <= 30 ? 2 : min <= 45 ? 3 : 4;
+
+function renderSchedule({ windows }, valid) {
+  if (!valid || !windows.length) {
+    $("schedule").innerHTML = `<div class="empty">${valid ? "No window fits in this range." : "End must be after start."}</div>`;
     return;
   }
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
-  const rows = rounds.map((r, i) => {
-    const expr = cronExpr(r.cron);
+  const rows = windows.map((w, i) => {
+    const expr = cronExpr(w.open);
+    const lvl = levelOf(w.rate * 60);
+    const cron = w.kind === "cron"
+      ? `<span class="cron"><code class="mono">${expr}</code><button class="ghost" type="button" data-copy="${expr}" aria-label="Copy ${expr}" title="Copy">${COPY_ICON}</button></span>`
+      : `<span class="sub">first message</span>`;
     return `<tr>
-      <td>${i + 1}</td>
-      <td><span class="t-trig">${hhmm(r.cron)}</span> <span class="sub">${shortDay(r.cron)}</span></td>
-      <td class="hide-sm"><span class="cron"><code class="mono">${expr}</code><button class="ghost" type="button" data-copy="${expr}" aria-label="Copy ${expr}" title="Copy">${COPY_ICON}</button></span></td>
-      <td>${hhmm(r.start)}–${hhmm(r.end)} <span class="sub">${shortDay(r.start)}</span></td>
-      <td><span class="t-q1">${hhmm(r.reset)}</span>${r.w2End ? ` <span class="sub">·</span> <span class="t-q2">${hhmm(r.w2End)}</span>` : ""}</td>
+      <td class="hide-sm">${i + 1}</td>
+      <td><span class="${w.kind === "cron" ? "t-trig" : ""}">${hhmm(w.open)}</span> <span class="sub">${shortDay(w.open)}</span></td>
+      <td class="hide-sm">${cron}</td>
+      <td>${hhmm(w.workFrom)}–${hhmm(w.workTo)}</td>
+      <td><i class="sw cell l${lvl}"></i>${Math.round(w.rate * 60)}m/h</td>
+      <td>${hhmm(w.reset)}</td>
     </tr>`;
   }).join("");
   $("schedule").innerHTML = `<table>
-    <thead><tr><th>#</th><th>Trigger</th><th class="hide-sm">Cron (${tz})</th><th>Heavy use</th><th>Resets</th></tr></thead>
+    <thead><tr><th class="hide-sm">#</th><th>Opens</th><th class="hide-sm">Cron</th><th>Work</th><th>Load</th><th>Resets</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 }
 
-function buildRules({ st, rounds, used }) {
+function buildRules({ st, windows, used }) {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
-  const off = OFF_HOURS.map(o => `${o.name.toLowerCase()} ${minText(o.from)}-${minText(o.to)}`).join(", ");
+  const sleep = OFF_HOURS.find(o => o.id === "sleep");
+  const meals = OFF_HOURS.filter(o => o.kind === "meal" && o.dur > 0).map(o => `${o.name.toLowerCase()} ${offRange(o).replace("–", "-")}`).join(", ");
+  const crons = windows.filter(w => w.kind === "cron");
   const L = [
     "# 5-hour quota plan",
     "",
     "Help me create scheduled jobs that open my AI coding tool's 5-hour usage window at the times below.",
     "",
     "## Rules",
-    "- Usage is metered in a 5-hour window. It opens with the first message sent while no window is active and resets 5 hours later.",
-    `- Weekly cap: about ${+st.cap.toFixed(3)} windows. Burning one window's quota takes me about ${st.burnH}h.`,
-    `- A job sends a tiny prompt at T to open window 1. I start heavy use at T + 5h - ${st.burnH}h, so quota 1 runs out at the reset (T + 5h). My next message opens window 2, which I burn right away.`,
-    "- The next trigger fires only after window 2 expires (T + 10h or later). A trigger inside an active window does nothing.",
-    `- Heavy use avoids ${off}. Triggers may fire then.`,
+    "- Usage is metered in a 5-hour window. It opens with the first message sent while no window is active and resets 5 hours later. A message sent inside an active window does not restart it.",
+    `- Weekly cap: about ${+st.cap.toFixed(3)} windows. Using up one window's quota takes me about ${st.burnH}h of heavy work.`,
+    sleep.dur > 0 ? `- I sleep ${offRange(sleep).replace("–", "-")}.${meals ? ` Meals: ${meals}.` : ""}` : `- I don't sleep during the hackathon.${meals ? ` Meals: ${meals}.` : ""}`,
+    `- Before each awake stretch (the hackathon start and every wake-up) a cron job sends a tiny prompt so the window resets about ${st.burnH}h after I start working. I use up that quota in one burst, then get a fresh window.`,
+    "- After each reset, my first message opens the next window. Windows run back to back all day, and I spread each quota evenly over its window.",
+    "- The window that is open at bedtime must be used up before I sleep.",
     "",
     `Trigger prompt (cheapest model): \`${PROMPT}\``,
     ""
   ];
-  if (rounds.length) {
-    L.push(`## Schedule (${tz})`);
+  if (windows.length) {
+    L.push(`## Windows (${tz})`);
     L.push("");
-    L.push("| # | Trigger | Cron | Heavy use | Window 1 resets | Window 2 resets |");
+    L.push("| # | Opens | Opened by | Work | Quota | Resets |");
     L.push("|---|---|---|---|---|---|");
-    rounds.forEach((r, i) => {
-      L.push(`| ${i + 1} | ${isoLocal(r.cron)} | \`${cronExpr(r.cron)}\` | ${stamp(r.start)}-${hhmm(r.end)} | ${hhmm(r.reset)} | ${r.w2End ? hhmm(r.w2End) : "-"} |`);
+    windows.forEach((w, i) => {
+      L.push(`| ${i + 1} | ${isoLocal(w.open)} | ${w.kind === "cron" ? `cron \`${cronExpr(w.open)}\`` : "first message"} | ${stamp(w.workFrom)}-${hhmm(w.workTo)} | ${qText(w.q)} | ${hhmm(w.reset)} |`);
     });
     L.push("");
     L.push(`Weekly quota used: ${+used.toFixed(2)} / ${+st.cap.toFixed(3)}.`);
     L.push("");
-    L.push("Each job runs once (the cron lines pin day and month). Show me the jobs before installing them.");
+    if (crons.length) {
+      L.push(`## Cron jobs to create (${crons.length})`);
+      L.push("");
+      crons.forEach(w => L.push(`- ${isoLocal(w.open)} (\`${cronExpr(w.open)}\`)`));
+      L.push("");
+      L.push("Each job runs once (the cron lines pin day and month). Show me the jobs before installing them.");
+    }
   } else {
-    L.push("No round fits in the current range.");
+    L.push("No window fits in the current range.");
   }
   return L.join("\n");
 }
@@ -618,8 +709,7 @@ function toast(msg) {
 
 function setupTips() {
   const tip = $("tip");
-  const tl = $("tl");
-  tl.addEventListener("pointermove", e => {
+  const onMove = e => {
     const el = e.target.closest("[data-tip]");
     if (!el) { tip.classList.remove("on"); return; }
     tip.textContent = el.dataset.tip;
@@ -630,12 +720,45 @@ function setupTips() {
     if (top + r.height > innerHeight - 8) top = e.clientY - r.height - 12;
     tip.style.left = Math.max(8, left) + "px";
     tip.style.top = Math.max(8, top) + "px";
+  };
+  [$("gridView")].forEach(el => {
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerdown", onMove);
+    el.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") tip.classList.remove("on"); });
   });
-  tl.addEventListener("pointerleave", () => tip.classList.remove("on"));
-  $("wrap").addEventListener("scroll", () => tip.classList.remove("on"), { passive: true });
+  document.addEventListener("pointerdown", e => { if (!e.target.closest("#gridView")) tip.classList.remove("on"); });
+  addEventListener("scroll", () => tip.classList.remove("on"), { passive: true });
 }
 
-const FIELDS = ["start", "startTime", "end", "endTime", "burn", "cap"];
+const FIELDS = ["start", "startTime", "end", "endTime", "burn", "cap",
+  ...OFF_DEFAULTS.flatMap(o => [`${o.id}From`, `${o.id}Dur`])];
+
+function buildOffControls(timeOptions) {
+  $("offs").innerHTML = OFF_DEFAULTS.map(o => {
+    const step = o.id === "sleep" ? 30 : 15;
+    let durs = "";
+    for (let m = 0; m <= OFF_MAX[o.id]; m += step) durs += `<option value="${m}">${durText(m)}</option>`;
+    return `<div>
+      <label for="${o.id}From">${o.name}</label>
+      <div class="pair"><select id="${o.id}From" aria-label="${o.name} starts">${timeOptions}</select><select id="${o.id}Dur" aria-label="${o.name} length">${durs}</select></div>
+    </div>`;
+  }).join("");
+  OFF_DEFAULTS.forEach(o => {
+    $(`${o.id}From`).value = minText(o.from);
+    $(`${o.id}Dur`).value = String(o.dur);
+  });
+}
+function readOffHours() {
+  OFF_HOURS = OFF_DEFAULTS.map(o => {
+    const [h, m] = $(`${o.id}From`).value.split(":").map(Number);
+    const from = h * 60 + m;
+    const dur = +$(`${o.id}Dur`).value || 0;
+    const el = $(`${o.id}Dur`);
+    el.classList.toggle("is-off", dur === 0);
+    $(`${o.id}From`).classList.toggle("is-off", dur === 0);
+    return { ...o, from, dur };
+  });
+}
 function saveState() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(FIELDS.map(id => [id, $(id).value]))));
@@ -655,6 +778,7 @@ function init() {
   for (let m = 0; m < 1440; m += 15) options += `<option value="${minText(m)}">${minText(m)}</option>`;
   $("startTime").innerHTML = options;
   $("endTime").innerHTML = options;
+  buildOffControls(options);
   if (!loadState()) {
     const s = new Date();
     s.setHours(10, 0, 0, 0);
@@ -673,7 +797,7 @@ function init() {
     const ok = await copyText(buildRules(current));
     const label = $("copyRulesText");
     label.textContent = ok ? "Copied" : "Copy failed";
-    setTimeout(() => { label.textContent = "Copy rules for LLM"; }, 1600);
+    setTimeout(() => { label.innerHTML = 'Copy rules<span class="label-md"> for LLM</span>'; }, 1600);
   });
   $("copyPrompt").addEventListener("click", async () => toast(await copyText(PROMPT) ? "Prompt copied" : "Copy failed"));
   $("schedule").addEventListener("click", async e => {
@@ -681,12 +805,19 @@ function init() {
     if (b) toast(await copyText(b.dataset.copy) ? `Copied ${b.dataset.copy}` : "Copy failed");
   });
 
+  const panel = $("settings"), gear = $("openSettings");
+  const setPanel = open => { panel.hidden = !open; gear.setAttribute("aria-expanded", String(open)); };
+  gear.addEventListener("click", () => setPanel(panel.hidden));
+  $("closeSettings").addEventListener("click", () => { setPanel(false); gear.focus(); });
+  document.addEventListener("pointerdown", e => { if (!panel.hidden && !e.target.closest("#settings, #openSettings")) setPanel(false); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !panel.hidden) { setPanel(false); gear.focus(); } });
+
   setupTips();
   let lastW = 0;
   new ResizeObserver(() => {
-    const w = $("wrap").clientWidth;
+    const w = document.querySelector("main").clientWidth;
     if (w !== lastW) { lastW = w; render(); }
-  }).observe($("wrap"));
+  }).observe(document.querySelector("main"));
   render();
 }
 init();
